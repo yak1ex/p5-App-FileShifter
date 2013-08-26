@@ -1,0 +1,34 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+# PODNAME: fileshifter
+# ABSTRACT: A script to move files from remote host
+# VERSION
+
+use Getopt::Std;
+use Getopt::Config::FromPod;
+use Pod::Usage;
+
+my %opts;
+getopts(Getopt::Config::FromPod->string, \%opts);
+
+pod2usage(-msg => 'Both modes of server and client are specified.', -verbose => 0, -exitval => 1)  if exists $opts{c} && exists $opts{s};
+pod2usage(-msg => 'Neither server or client is specified.', -verbose => 0, -exitval => 1)  if ! exists $opts{c} && ! exists $opts{s};
+
+my $class = exists $opts{s} ? 'App::FileShifter::Server' : 'App::FileShifter::Client';
+eval "require $class";
+$class->run(\%opts, \@ARGV);
+
+__END__
+
+=head1 SYNOPSIS
+
+=head1 DESCRIPTION
+
+=head1 OPTIONS
+
+=for getopt 's'
+
+=for getopt 'c'
