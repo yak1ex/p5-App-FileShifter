@@ -1,0 +1,4 @@
+.build/
+App-FileShifter-*.tar.gz
+App-FileShifter-*/
+*.BAK
