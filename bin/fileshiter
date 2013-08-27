@@ -27,8 +27,26 @@ __END__
 
 =head1 DESCRIPTION
 
-=head1 OPTIONS
+=option C<-s>
+
+Specify server mode.
 
 =for getopt 's'
 
+=option C<-c>
+
+Specify client mode.
+
 =for getopt 'c'
+
+=option C<-p>
+
+Specify port number. Available both for server and client.
+
+=for getopt 'p:'
+
+=option C<-H>
+
+Specify host. For client only.
+
+=for getopt 'H:'
