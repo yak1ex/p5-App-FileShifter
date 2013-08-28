@@ -11,7 +11,9 @@ use AnyEvent::Socket;
 use AnyEvent::Handle;
 use AnyEvent::MessagePack;
 
-use Digest::SHA;
+use Digest::SHA qw(sha1);
+use File::Find;
+use Fcntl qw(:seek);
 
 my %dispatch = (
     list => \&_list,
@@ -23,25 +25,39 @@ my %dispatch = (
 sub _list
 {
     my ($opts, undef, $path, $filter) = @_;
-    return [[0, 0, 0]]; # [$filename, $size, $date]...
+    my @result;
+    foreach my $p (@$path) {
+        find({
+            wanted => sub {
+                return if ! -f $File::Find::name;
+                return if grep { $File::Find::name =~ /$_/ } @$filter;
+                push @result, [$File::Find::name, (stat $File::Find::name)[7,9]];
+            }, no_chdir => 1 }, $p);
+    }
+    return \@result;
 }
 
 sub _get
 {
     my ($opts, undef, $file, $from, $size) = @_;
-    return [0, 0]; # $data, $sha1
+    open my $fh, '<:raw', $file;
+    my $dat;
+    seek $fh, $from, SEEK_SET;
+    read $fh, $dat, $size;
+    close $fh;
+    return [$dat, sha1($dat)];
 }
 
 sub _complete
 {
     my ($opts, undef, $file, $sha1) = @_;
-    return [0]; # $status
+# TODO: remove actually
+    return [Digest::SHA->new->addfile($file)->digest eq $sha1];
 }
 
 sub _hash
 {
-    my ($opts, undef, $file, $from, $size) = @_;
-    return [0]; # $sha1
+    return [_get(@_)->[1]]; # sha1
 }
 
 sub run
@@ -67,7 +83,7 @@ sub run
             my ($handle, $data) = @_;
             if(exists $dispatch{$data->[0]}) {
                 $opts->{v} and print $data->[0],"\n";
-                my $ret = $dispatch{$data->[0]}($opts, @$data);
+                my $ret = $dispatch{$data->[0]}->($opts, @$data);
                 $handle->push_write(msgpack => $ret);
             } else {
                 warn "Unknown command $data->[0]";
