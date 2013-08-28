@@ -56,3 +56,9 @@ Specify port number. Available both for server and client.
 Specify host. For client only.
 
 =for getopt 'H:'
+
+=option C<-n>
+
+Specify concurrency. For client only.
+
+=for getopt 'n:'

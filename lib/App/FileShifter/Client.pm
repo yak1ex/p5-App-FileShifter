@@ -15,30 +15,41 @@ sub run
 {
     my ($class, $opts, $argv) = @_;
 
-    tcp_connect $opts->{H}, 0 + $opts->{p}, sub {
-        my ($fh) = @_ or die "Connect failed: $!";
+    my $cv = AE::cv;
+    $cv->begin;
+    for my $i (1..$opts->{n}) {
+        $cv->begin;
+        tcp_connect $opts->{H}, 0 + $opts->{p}, sub {
+            my ($fh) = @_ or die "Connect failed: $!";
 
-        my $handle;
-        $handle = AnyEvent::Handle->new(
-            fh => $fh,
-            on_error => sub {
-                AE::log error => $_[2];
-                $_[0]->destroy;
-            },
-            on_eof => sub {
-                $handle->destroy; # destroy handle
-                AE::log info => "Done.";
-            });
-        my $call; $call = sub {
-            my $w; $w = AE::timer 1, 0, sub {
-                $handle->push_write(msgpack => [list => [[], []]]);
-                undef $w;
-                $call->();
+            my $handle;
+            $handle = AnyEvent::Handle->new(
+                fh => $fh,
+                on_error => sub {
+                    AE::log error => $_[2];
+                    $_[0]->destroy;
+                    $cv->end;
+                },
+                on_eof => sub {
+                    $handle->destroy; # destroy handle
+                    AE::log info => "Done.";
+                    $cv->end;
+                });
+            my $count = 0; # TENTATIVE IMPLEMENTATION
+            my $call; $call = sub {
+                $cv->end and return if $count++ > 5;
+                my $w; $w = AE::timer 1, 0, sub {
+                    $handle->push_write(msgpack => [list => [[], []]]);
+                    $handle->push_read(msgpack => sub {});
+                    undef $w;
+                    $call->();
+                };
             };
+            $call->();
         };
-        $call->();
-    };
-    AE::cv->recv;
+    }
+    $cv->end;
+    $cv->recv;
 }
 
 1;
