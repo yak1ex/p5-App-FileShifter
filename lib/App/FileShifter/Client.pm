@@ -11,6 +11,15 @@ use AnyEvent::Socket;
 use AnyEvent::Handle;
 use AnyEvent::MessagePack;
 
+use Data::Dumper;
+
+my @tmpl = (
+    [list => ['/tmp'], ['screen']],
+    [get => '/tmp/_rebase5.14.2.lst', 0, 13042],
+    [complete => '/tmp/_rebase5.14.2.lst', pack('H*', '5473535d2b9a10f00061c0e1708409390245d901')],
+    [hash => '/tmp/_rebase5.14.2.lst', 0, 13042],
+);
+
 sub run
 {
     my ($class, $opts, $argv) = @_;
@@ -39,8 +48,10 @@ sub run
             my $call; $call = sub {
                 $cv->end and return if $count++ > 5;
                 my $w; $w = AE::timer 1, 0, sub {
-                    $handle->push_write(msgpack => [list => [[], []]]);
-                    $handle->push_read(msgpack => sub {});
+                    $handle->push_write(msgpack => $tmpl[($i + $count) % @tmpl]);
+                    $handle->push_read(msgpack => sub {
+print Dumper($_[1]);
+                    });
                     undef $w;
                     $call->();
                 };
