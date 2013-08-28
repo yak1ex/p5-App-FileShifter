@@ -27,6 +27,12 @@ __END__
 
 =head1 DESCRIPTION
 
+=option C<-v>
+
+Verbose mode. Available both for server and client.
+
+=for getopt 'v'
+
 =option C<-s>
 
 Specify server mode.
