@@ -34,10 +34,10 @@ The current considered commands are as follows:
 
 =head2 [[$filename, $size, $date], ...] = list([[$path, ...], [$filter, ...]])
 
-=head2 [$data, $sha1] = get([$filename, $from, $to])
+=head2 [$data, $sha1] = get([$filename, $from, $size])
 
 =head2 [$status] = complete([$filename, $sha1])
 
-=head2 [$sha1] = hash([$filename, $from, $to])
+=head2 [$sha1] = hash([$filename, $from, $size])
 
 =cut
