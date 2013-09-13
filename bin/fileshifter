@@ -25,6 +25,12 @@ __END__
 
 =head1 SYNOPSIS
 
+  # Server
+  fileshifter -s -p 8888 -v
+
+  # Client
+  fileshifter -c -n 5 -p 8888 -H localhost -d dest_path -u 65536 -t target_path -v
+
 =head1 DESCRIPTION
 
 =option C<-v>

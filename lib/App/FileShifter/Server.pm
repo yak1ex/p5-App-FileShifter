@@ -100,7 +100,7 @@ sub run
         $handler = sub {
             my ($handle, $data) = @_;
             if(exists $dispatch{$data->[0]}) {
-                $opts->{v} and print $data->[0],"\n";
+                $opts->{v} and print STDERR $data->[0],"\n";
                 $dispatch{$data->[0]}->($opts, @$data)->cb(sub {
                     $handle->push_write(msgpack => shift->recv);
                 });
