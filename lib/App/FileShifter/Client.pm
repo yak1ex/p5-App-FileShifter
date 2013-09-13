@@ -10,15 +10,12 @@ use AE;
 use AnyEvent::Socket;
 use AnyEvent::Handle;
 use AnyEvent::MessagePack;
+use AnyEvent::Digest;
 
+use Digest::SHA qw(sha1);
+use File::Path qw(make_path);
+use File::Basename;
 use Data::Dumper;
-
-my @tmpl = (
-    [list => ['/tmp'], ['screen']],
-    [get => '/tmp/_rebase5.14.2.lst', 0, 13042],
-    [complete => '/tmp/_rebase5.14.2.lst', pack('H*', '5473535d2b9a10f00061c0e1708409390245d901')],
-    [hash => '/tmp/_rebase5.14.2.lst', 0, 13042],
-);
 
 sub _connect
 {
@@ -45,32 +42,86 @@ sub _connect
     };
 }
 
+sub _assign
+{
+    my ($list, $assign) = @_;
+    my @list = grep { ! exists $assign->{$_->[0]} } @$list;
+    return if ! @list;
+    $assign->{$list[0][0]} = 1;
+    return $list[0];
+}
+
 sub run
 {
     my ($class, $opts, $argv) = @_;
 
+    my ($host, $port, $number, $unit, $dest, $target, $interval, $verbose) = @{$opts}{qw(H p n u d t i v)};
+    my $list; # [[$name, $size, $date],...]
+    my %assign;
+
     my $cv = AE::cv;
-    $cv->begin;
-    for my $i (1..$opts->{n}) {
+    my $cv2 = AE::cv;
+
+    _connect($cv, $host, 0 + $port, sub {
+        my $handle = shift;
+        my $w; $w = AE::timer 0, $interval, sub {
+            $handle->push_write(msgpack => [list => [$target], []]);
+            $handle->push_read(msgpack => sub {
+                $list = $_[1];
+                undef %assign;
+                print Dumper($list);
+                $cv2->send if defined $w;
+            });
+        };
+    });
+    $cv2->recv;
+
+    for my $i (1..$number) {
         $cv->begin;
-        _connect($cv, $opts->{H}, 0 + $opts->{p}, sub {
+        _connect($cv, $host, 0 + $port, sub {
             my $handle = shift;
-            my $count = 0; # TENTATIVE IMPLEMENTATION
             my $call; $call = sub {
-                $cv->end and return if $count++ > 5;
-                my $w; $w = AE::timer 1, 0, sub {
-                    $handle->push_write(msgpack => $tmpl[($i + $count) % @tmpl]);
-                    $handle->push_read(msgpack => sub {
-print Dumper($_[1]);
+                my $target = _assign($list, \%assign);
+                if(! defined $target) {
+                    my $w; $w = AE::timer 1, 0, sub { undef $w; $call->() };
+                    return;
+                }
+                my $tpath = "${dest}.tmp/$target->[0]";
+                make_path(dirname($tpath));
+                my $cursize = -s $tpath // 0;
+                my $left = $target->[1] - $cursize;
+                if($left == 0) { # maybe completed
+                    $verbose and print STDERR "COMPLETE?: $target->[0]\n";
+                    AnyEvent::Digest->new('Digest::SHA', opts => [1])->addfile_async($tpath)->cb(sub {
+                        $handle->push_write(msgpack => [complete => $target->[0], shift->recv->digest]);
+                        $handle->push_read(msgpack => sub {
+                            if($_[1]) { # OK
+                                my $dpath = "$dest/$target->[0]";
+                                make_path(dirname($dpath));
+                                rename $tpath => $dpath;
+                            } else {
+                                delete $assign{$target->[0]};
+                            }
+                            $call->();
+                        });
                     });
-                    undef $w;
-                    $call->();
-                };
+                } else {
+                    $verbose and print STDERR "GET: $target->[0]\n";
+                    $handle->push_write(msgpack => [get => $target->[0], $cursize, $left > $unit ? $unit : $left]);
+                    $handle->push_read(msgpack => sub {
+                        if(sha1($_[1][0]) eq $_[1][1]) {
+                            open my $fh, '>>:raw', $tpath;
+                            print $fh $_[1][0];
+                            close $fh;
+                        }
+                        delete $assign{$target->[0]};
+                        $call->();
+                    });
+                }
             };
             $call->();
         });
     }
-    $cv->end;
     $cv->recv;
 }
 

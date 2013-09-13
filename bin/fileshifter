@@ -62,3 +62,27 @@ Specify host. For client only.
 Specify concurrency. For client only.
 
 =for getopt 'n:'
+
+=option C<-t>
+
+Specify target folder. For client only.
+
+=for getopt 't:'
+
+=option C<-d>
+
+Specify destination folder. For client only.
+
+=for getopt 'd:'
+
+=option C<-u>
+
+Specify unit size. For client only.
+
+=for getopt 'u:'
+
+=option C<-i>
+
+Specify list update interval. For client only.
+
+=for getopt 'i:'
