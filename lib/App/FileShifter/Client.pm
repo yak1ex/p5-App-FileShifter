@@ -20,6 +20,31 @@ my @tmpl = (
     [hash => '/tmp/_rebase5.14.2.lst', 0, 13042],
 );
 
+sub _connect
+{
+    my ($cv, $host, $port, $sub) = @_;
+
+    tcp_connect $host, $port, sub {
+        my ($fh) = @_ or die "Connect failed: $!";
+
+        my $handle;
+        $handle = AnyEvent::Handle->new(
+            fh => $fh,
+            on_error => sub {
+                AE::log error => $_[2];
+                $_[0]->destroy;
+                $cv->end;
+            },
+            on_eof => sub {
+                $handle->destroy; # destroy handle
+                AE::log info => "Done.";
+                $cv->end;
+            }
+        );
+        $sub->($handle);
+    };
+}
+
 sub run
 {
     my ($class, $opts, $argv) = @_;
@@ -28,22 +53,8 @@ sub run
     $cv->begin;
     for my $i (1..$opts->{n}) {
         $cv->begin;
-        tcp_connect $opts->{H}, 0 + $opts->{p}, sub {
-            my ($fh) = @_ or die "Connect failed: $!";
-
-            my $handle;
-            $handle = AnyEvent::Handle->new(
-                fh => $fh,
-                on_error => sub {
-                    AE::log error => $_[2];
-                    $_[0]->destroy;
-                    $cv->end;
-                },
-                on_eof => sub {
-                    $handle->destroy; # destroy handle
-                    AE::log info => "Done.";
-                    $cv->end;
-                });
+        _connect($cv, $opts->{H}, 0 + $opts->{p}, sub {
+            my $handle = shift;
             my $count = 0; # TENTATIVE IMPLEMENTATION
             my $call; $call = sub {
                 $cv->end and return if $count++ > 5;
@@ -57,7 +68,7 @@ print Dumper($_[1]);
                 };
             };
             $call->();
-        };
+        });
     }
     $cv->end;
     $cv->recv;
