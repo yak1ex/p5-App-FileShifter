@@ -10,6 +10,7 @@ use AE;
 use AnyEvent::Socket;
 use AnyEvent::Handle;
 use AnyEvent::MessagePack;
+use AnyEvent::Digest;
 
 use Digest::SHA qw(sha1);
 use File::Find;
@@ -25,6 +26,7 @@ my %dispatch = (
 sub _list
 {
     my ($opts, undef, $path, $filter) = @_;
+    my $cv = AE::cv;
     my @result;
     foreach my $p (@$path) {
         find({
@@ -34,30 +36,42 @@ sub _list
                 push @result, [$File::Find::name, (stat $File::Find::name)[7,9]];
             }, no_chdir => 1 }, $p);
     }
-    return \@result;
+    $cv->send(\@result);
+    return $cv;
 }
 
 sub _get
 {
     my ($opts, undef, $file, $from, $size) = @_;
+    my $cv = AE::cv;
     open my $fh, '<:raw', $file;
     my $dat;
     seek $fh, $from, SEEK_SET;
     read $fh, $dat, $size;
     close $fh;
-    return [$dat, sha1($dat)];
+    $cv->send([$dat, sha1($dat)]);
+    return $cv;
 }
 
 sub _complete
 {
     my ($opts, undef, $file, $sha1) = @_;
+    my $cv = AE::cv;
 # TODO: remove actually
-    return [Digest::SHA->new->addfile($file)->digest eq $sha1];
+    my $ctx = AnyEvent::Digest->new('Digest::SHA', opts => [1]);
+    $ctx->addfile_async($file)->cb(sub {
+        $cv->send([shift->recv->digest eq $sha1]);
+    });
+    return $cv;
 }
 
 sub _hash
 {
-    return [_get(@_)->[1]]; # sha1
+    my $cv = AE::cv;
+    _get(@_)->cb(sub {
+        $cv->send([shift->recv->[1]]); # sha1
+    });
+    return $cv;
 }
 
 sub run
@@ -83,8 +97,9 @@ sub run
             my ($handle, $data) = @_;
             if(exists $dispatch{$data->[0]}) {
                 $opts->{v} and print $data->[0],"\n";
-                my $ret = $dispatch{$data->[0]}->($opts, @$data);
-                $handle->push_write(msgpack => $ret);
+                $dispatch{$data->[0]}->($opts, @$data)->cb(sub {
+                    $handle->push_write(msgpack => shift->recv);
+                });
             } else {
                 warn "Unknown command $data->[0]";
             }
