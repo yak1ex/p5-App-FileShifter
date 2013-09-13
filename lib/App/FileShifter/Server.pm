@@ -57,10 +57,14 @@ sub _complete
 {
     my ($opts, undef, $file, $sha1) = @_;
     my $cv = AE::cv;
-# TODO: remove actually
     my $ctx = AnyEvent::Digest->new('Digest::SHA', opts => [1]);
     $ctx->addfile_async($file)->cb(sub {
-        $cv->send([shift->recv->digest eq $sha1]);
+        if(shift->recv->digest eq $sha1) {
+            unlink $file;
+            $cv->send([1]);
+        } else {
+            $cv->send([0]);
+        }
     });
     return $cv;
 }
