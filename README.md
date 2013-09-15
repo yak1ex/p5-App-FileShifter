@@ -31,11 +31,11 @@ The current considered commands are as follows:
 
 ## \[\[$filename, $size, $date\], ...\] = list(\[\[$path, ...\], \[$filter, ...\]\])
 
-## \[$data, $sha1\] = get(\[$filename, $from, $to\])
+## \[$data, $sha1\] = get(\[$filename, $from, $size\])
 
 ## \[$status\] = complete(\[$filename, $sha1\])
 
-## \[$sha1\] = hash(\[$filename, $from, $to\])
+## \[$sha1\] = hash(\[$filename, $from, $size\])
 
 # AUTHOR
 
