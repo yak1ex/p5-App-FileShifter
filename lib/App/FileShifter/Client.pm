@@ -51,10 +51,21 @@ sub _assign
     return $list[0];
 }
 
+sub _make_tpath
+{
+    my ($dest, $target, $file) = @_;
+    my $temp = $file->[0];
+    $temp =~ s@^$target@@;
+    return "${dest}.tmp/$temp";
+
+}
+
 sub _make_dpath
 {
     my ($dest, $target, $file) = @_;
-    my $base = "$dest/$file->[0]";
+    my $temp = $file->[0];
+    $temp =~ s@^$target@@;
+    my $base = "$dest/$temp";
     return $base unless -f $base;
     my $count = 1;
     while(1) {
@@ -99,7 +110,7 @@ sub run
                     my $w; $w = AE::timer $interval, 0, sub { undef $w; $call->() };
                     return;
                 }
-                my $tpath = "${dest}.tmp/$file->[0]";
+                my $tpath = _make_tpath($dest, $target, $file);
                 make_path(dirname($tpath));
                 my $cursize = -s $tpath // 0;
                 my $left = $file->[1] - $cursize;
