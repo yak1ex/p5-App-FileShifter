@@ -100,6 +100,7 @@ sub run
                                 make_path(dirname($dpath));
                                 rename $tpath => $dpath;
                             } else {
+                                unlink $tpath; # Just remove currently
                                 delete $assign{$target->[0]};
                             }
                             $call->();
