@@ -51,6 +51,19 @@ sub _assign
     return $list[0];
 }
 
+sub _make_dpath
+{
+    my ($dest, $target, $file) = @_;
+    my $base = "$dest/$file->[0]";
+    return $base unless -f $base;
+    my $count = 1;
+    while(1) {
+        my $candidate = $base.'.'.$count;
+        return $candidate unless -f $candidate;
+        ++$count;
+    }
+}
+
 sub run
 {
     my ($class, $opts, $argv) = @_;
@@ -81,41 +94,41 @@ sub run
         _connect($cv, $host, 0 + $port, sub {
             my $handle = shift;
             my $call; $call = sub {
-                my $target = _assign($list, \%assign);
-                if(! defined $target) {
-                    my $w; $w = AE::timer 1, 0, sub { undef $w; $call->() };
+                my $file = _assign($list, \%assign);
+                if(! defined $file) {
+                    my $w; $w = AE::timer $interval, 0, sub { undef $w; $call->() };
                     return;
                 }
-                my $tpath = "${dest}.tmp/$target->[0]";
+                my $tpath = "${dest}.tmp/$file->[0]";
                 make_path(dirname($tpath));
                 my $cursize = -s $tpath // 0;
-                my $left = $target->[1] - $cursize;
+                my $left = $file->[1] - $cursize;
                 if($left == 0) { # maybe completed
-                    $verbose and print STDERR "COMPLETE?: $target->[0]\n";
+                    $verbose and print STDERR "COMPLETE?: $file->[0]\n";
                     AnyEvent::Digest->new('Digest::SHA', opts => [1])->addfile_async($tpath)->cb(sub {
-                        $handle->push_write(msgpack => [complete => $target->[0], shift->recv->digest]);
+                        $handle->push_write(msgpack => [complete => $file->[0], shift->recv->digest]);
                         $handle->push_read(msgpack => sub {
                             if($_[1]) { # OK
-                                my $dpath = "$dest/$target->[0]";
+                                my $dpath = _make_dpath($dest, $target, $file);
                                 make_path(dirname($dpath));
                                 rename $tpath => $dpath;
                             } else {
                                 unlink $tpath; # Just remove currently
-                                delete $assign{$target->[0]};
+                                delete $assign{$file->[0]};
                             }
                             $call->();
                         });
                     });
                 } else {
-                    $verbose and print STDERR "GET: $target->[0]\n";
-                    $handle->push_write(msgpack => [get => $target->[0], $cursize, $left > $unit ? $unit : $left]);
+                    $verbose and print STDERR "GET: $file->[0]\n";
+                    $handle->push_write(msgpack => [get => $file->[0], $cursize, $left > $unit ? $unit : $left]);
                     $handle->push_read(msgpack => sub {
                         if(sha1($_[1][0]) eq $_[1][1]) {
                             open my $fh, '>>:raw', $tpath;
                             print $fh $_[1][0];
                             close $fh;
                         }
-                        delete $assign{$target->[0]};
+                        delete $assign{$file->[0]};
                         $call->();
                     });
                 }
