@@ -69,7 +69,7 @@ sub run
             $handle->push_read(msgpack => sub {
                 $list = $_[1];
                 undef %assign;
-                print Dumper($list);
+                $verbose and print Dumper($list);
                 $cv2->send if defined $w;
             });
         };
