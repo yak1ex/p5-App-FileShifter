@@ -119,6 +119,17 @@ __END__
 
 =head1 SYNOPSIS
 
+  my %opts;
+  getopts(Getopt::Config::FromPod->string, \%opts);
+  App::FileShifter::Server->run(\%opts, \@ARGV);
+
 =head1 DESCRIPTION
+
+Server-side implementation for App::FileShifter. This is a simple TCP RPC server.
+
+=method run(\%opts, \@ARGV)
+
+Run server mode.
+Arguments are a hash reference to hold parsing result of options and an array reference of other arguments.
 
 =cut

@@ -130,6 +130,19 @@ __END__
 
 =head1 SYNOPSIS
 
+  my %opts;
+  getopts(Getopt::Config::FromPod->string, \%opts);
+  App::FileShifter::Client->run(\%opts, \@ARGV);
+
 =head1 DESCRIPTION
+
+Client-side implementation for App::FileShifter.
+
+A loop invokes C<list> repeatedly. Other C<-n> loops invoke C<complete> or C<get> depending whether temporary size is equal to actual size or not.
+
+=method run(\%opts, \@ARGV)
+
+Run client mode.
+Arguments are a hash reference to hold parsing result of options and an array reference of other arguments.
 
 =cut
