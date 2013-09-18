@@ -77,6 +77,14 @@ sub _make_dpath
     }
 }
 
+sub _update_assignment
+{
+    my ($assign, $list) = @_;
+    my %check = map { $_ => 1 } keys %$assign;
+    delete $check{$_->[0]} for @$list;
+    delete $assign->{$_} for keys %check;
+}
+
 sub run
 {
     my ($class, $opts, $argv) = @_;
@@ -104,7 +112,7 @@ sub run
             $handle->push_write(msgpack => [list => [$target], []]);
             $handle->push_read(msgpack => sub {
                 $list = $_[1];
-                undef %assign;
+                _update_assignment(\%assign, $list);
                 $verbose and print Dumper($list);
                 $cv2->send if defined $w;
             });
