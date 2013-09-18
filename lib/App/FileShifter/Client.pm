@@ -6,6 +6,8 @@ use warnings;
 # ABSTRACT: App::FileShifter client module
 # VERSION
 
+use Pod::Usage;
+
 use AE;
 use AnyEvent::Socket;
 use AnyEvent::Handle;
@@ -80,6 +82,16 @@ sub run
     my ($class, $opts, $argv) = @_;
 
     my ($host, $port, $number, $unit, $dest, $target, $interval, $verbose) = @{$opts}{qw(H p n u d t i v)};
+
+    pod2usage(-verbose => 0, -msg => 'You need to specify host by -H', -exitval => 1) if ! defined $host;
+    pod2usage(-verbose => 0, -msg => 'You need to specify port by -p', -exitval => 1) if ! defined $port;
+    pod2usage(-verbose => 0, -msg => 'You need to specify source path by -t', -exitval => 1) if ! defined $target;
+    pod2usage(-verbose => 0, -msg => 'You need to specify destination path by -d', -exitval => 1) if ! defined $dest;
+
+    $number ||= 5;
+    $unit ||= 65536;
+    $interval ||= 30;
+
     my $list; # [[$name, $size, $date],...]
     my %assign;
 

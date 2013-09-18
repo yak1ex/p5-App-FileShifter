@@ -6,6 +6,8 @@ use warnings;
 # ABSTRACT: App::FileShifter server module
 # VERSION
 
+use Pod::Usage;
+
 use AE;
 use AnyEvent::Socket;
 use AnyEvent::Handle;
@@ -82,7 +84,11 @@ sub run
 {
     my ($class, $opts, $argv) = @_;
 
-    tcp_server undef, $opts->{p}, sub {
+    my ($port, $verbose) = @{$opts}{qw(p v)};
+
+    pod2usage(-verbose => 0, -msg => 'You need to specify port number by -p', exitval => 1) if ! defined ($opts->{p}) || $opts->{p} == 0;
+
+    tcp_server undef, $port, sub {
         my ($fh, $host, $port) = @_;
 
         my $handle;
@@ -100,7 +106,7 @@ sub run
         $handler = sub {
             my ($handle, $data) = @_;
             if(exists $dispatch{$data->[0]}) {
-                $opts->{v} and print STDERR $data->[0],"\n";
+                $verbose and print STDERR $data->[0],"\n";
                 $dispatch{$data->[0]}->($opts, @$data)->cb(sub {
                     $handle->push_write(msgpack => shift->recv);
                 });

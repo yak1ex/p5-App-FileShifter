@@ -14,6 +14,7 @@ use Pod::Usage;
 my %opts;
 getopts(Getopt::Config::FromPod->string, \%opts);
 
+pod2usage(-verbose => 2) if exists $opts{h};
 pod2usage(-msg => 'Both modes of server and client are specified.', -verbose => 0, -exitval => 1)  if exists $opts{c} && exists $opts{s};
 pod2usage(-msg => 'Neither server or client is specified.', -verbose => 0, -exitval => 1)  if ! exists $opts{c} && ! exists $opts{s};
 
@@ -25,13 +26,21 @@ __END__
 
 =head1 SYNOPSIS
 
-  # Server
+  # Server at port 8888 with verbose mode
   fileshifter -s -p 8888 -v
 
-  # Client
-  fileshifter -c -n 5 -p 8888 -H localhost -d dest_path -u 65536 -t target_path -v
+  # Client connecting to locahost:8888 with verbose mode,
+  # 5 concurrent transfer into dest_path from target path by 65536 byte unit,
+  # and 30 sec update interval
+  fileshifter -c -n 5 -p 8888 -H localhost -d dest_path -u 65536 -t target_path -i 30 -v
 
 =head1 DESCRIPTION
+
+=option C<-h>
+
+Show POD help.
+
+=for getopt 'h'
 
 =option C<-v>
 
@@ -65,7 +74,7 @@ Specify host. For client only.
 
 =option C<-n>
 
-Specify concurrency. For client only.
+Specify concurrency. Defaults to 5. For client only.
 
 =for getopt 'n:'
 
@@ -83,12 +92,12 @@ Specify destination folder. For client only.
 
 =option C<-u>
 
-Specify unit size. For client only.
+Specify unit size in bytes. Defaults to 65536. For client only.
 
 =for getopt 'u:'
 
 =option C<-i>
 
-Specify list update interval. For client only.
+Specify list update interval in secs. Defaults to 30. For client only.
 
 =for getopt 'i:'
