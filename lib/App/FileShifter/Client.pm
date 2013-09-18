@@ -135,6 +135,7 @@ sub run
                                 my $dpath = _make_dpath($dest, $target, $file);
                                 make_path(dirname($dpath));
                                 rename $tpath => $dpath;
+                                utime $file->[2], $file->[2], $dpath;
                             } else {
                                 unlink $tpath; # Just remove currently
                                 delete $assign{$file->[0]};
